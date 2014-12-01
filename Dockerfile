@@ -1,16 +1,25 @@
-FROM ubuntu:14.04
+FROM debian:wheezy
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y curl build-essential libssl-dev scons
-
-RUN curl -o /tmp/mongo.tgz -SL 'https://fastdl.mongodb.org/src/mongodb-src-r2.6.4.tar.gz' && \
-    mkdir /tmp/mongo && \
-    tar -xf /tmp/mongo.tgz -C /tmp/mongo --strip-components 1 && \
-    cd /tmp/mongo && \
+RUN ver='2.6.5'; \
+    url="https://fastdl.mongodb.org/src/mongodb-src-r$ver.tar.gz"; \
+    md5='a6ba36e84c291a3e174c36138a470fd1'; \
+    deps='curl ca-certificates build-essential libssl-dev scons'; \
+    set -x && \
+    groupadd -r mongodb && \
+    useradd -r -g mongodb mongodb && \
+    apt-get update && \
+    apt-get install -y $deps --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/* && \
+    cd /tmp && \
+    curl -sSL "$url" -o mongo.tgz && \
+    echo "$md5 *mongo.tgz" | md5sum -c - && \
+    mkdir mongo && \
+    tar -xf mongo.tgz -C mongo --strip-components 1 && \
+    cd mongo && \
     scons core tools install --64 --ssl && \
     cd debian && \
     chmod +x mongodb-org-server.postinst && \
     ./mongodb-org-server.postinst configure && \
-    rm -rf /tmp/mongo && \
-    rm /tmp/mongo.tgz
-
-USER mongodb
+    cd /tmp && \
+    rm -rf mongo mongo.tgz && \
+    apt-get purge -y --auto-remove $deps
